@@ -298,10 +298,28 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* IN PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'IN') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.IN, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.1rem', textShadow: '0 2px 10px rgba(59, 130, 246, 0.4)' }}>
-              IN ({inPie.total} unit)
+            <h4 style={{ color: SOURCE_COLORS.IN, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(59, 130, 246, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+              IN
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
+              {inPie.total > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 5
+                }}>
+                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{inPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                </div>
+              )}
               {inPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -323,10 +341,28 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* VALID PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'VALID') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.VALID, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.1rem', textShadow: '0 2px 10px rgba(34, 197, 94, 0.4)' }}>
-              VALID ({validPie.total} unit)
+            <h4 style={{ color: SOURCE_COLORS.VALID, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(34, 197, 94, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+              VALID
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
+              {validPie.total > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 5
+                }}>
+                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{validPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                </div>
+              )}
               {validPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -348,10 +384,28 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* BACKLOG PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'BACKLOG') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.BACKLOG, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.1rem', textShadow: '0 2px 10px rgba(239, 68, 68, 0.4)' }}>
-              BACKLOG ({backlogPie.total} unit)
+            <h4 style={{ color: SOURCE_COLORS.BACKLOG, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(239, 68, 68, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+              BACKLOG
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
+              {backlogPie.total > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 5
+                }}>
+                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{backlogPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                </div>
+              )}
               {backlogPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
