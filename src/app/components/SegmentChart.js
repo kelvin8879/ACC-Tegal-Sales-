@@ -112,6 +112,7 @@ export default function SegmentChart({ data, activeTab }) {
                 outerRadius={85}
                 paddingAngle={3}
                 dataKey="value"
+                isAnimationActive={false}
               >
                 {segmentData.map((entry, index) => (
                   <Cell

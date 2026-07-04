@@ -70,8 +70,8 @@ const renderCustomLabel = (props) => {
     pieRenderState.leftLabels = [];
   }
 
-  // Sembunyikan label untuk data yang terlalu kecil
-  if (percent < 0.035) return null;
+  // Tampilkan SEMUA label tanpa kecuali sesuai permintaan user
+  // (kode penyembunyian persentase kecil dihapus)
 
   const sin = Math.sin(-RADIAN * midAngle);
   const cos = Math.cos(-RADIAN * midAngle);
@@ -85,32 +85,33 @@ const renderCustomLabel = (props) => {
   // Titik terbawah adalah cos = 0. Dengan cos > 0.05, label di ujung bawah akan lari ke Kiri.
   const isRight = cos > 0.05;
 
-  // 3. SMART SPATIAL RADIAL STAGGERING
-  // Hanya tarik garis panjang JIKA ada label lain di sekitarnya (dalam radius 45 derajat).
-  // Jika dia sendirian, garisnya akan tetap pendek dan rapi.
-  let extension = 15;
+  // 3. SMART VERTICAL STAGGERING
+  // Kita pastikan tidak ada teks yang bertabrakan secara vertikal (ey)
+  let mx = cx + (outerRadius + 15) * cos;
+  let my = cy + (outerRadius + 15) * sin;
+
   const labelsOnSide = isRight ? pieRenderState.rightLabels : pieRenderState.leftLabels;
-  
-  let maxExtInRange = 0;
-  let foundClose = false;
-  
-  for (const lbl of labelsOnSide) {
-    if (getAngleDiff(midAngle, lbl.angle) < 45) {
-      foundClose = true;
-      if (lbl.ext > maxExtInRange) {
-        maxExtInRange = lbl.ext;
+
+  let collision = true;
+  let iters = 0;
+  while (collision && iters < 8) {
+    collision = false;
+    for (const lbl of labelsOnSide) {
+      if (Math.abs(my - lbl.ey) < 22) { // Teks butuh jarak vertikal minimal 22px (karena 2 baris teks)
+        collision = true;
+        if (my >= cy) {
+          my += 22; 
+        } else {
+          my -= 22; 
+        }
+        mx += (isRight ? 1 : -1) * 8; 
+        break;
       }
     }
+    iters++;
   }
-  
-  if (foundClose) {
-    extension = maxExtInRange + 28;
-  }
-  
-  labelsOnSide.push({ angle: midAngle, ext: extension });
-  
-  let mx = cx + (outerRadius + extension) * cos;
-  const my = cy + (outerRadius + extension) * sin;
+
+  labelsOnSide.push({ ey: my, angle: midAngle });
 
   // Koreksi patahan (foldback/zig-zag) untuk label bawah:
   // Jika label dipaksa ke kiri (!isRight) tetapi posisinya aslinya sedikit di kanan (mx >= cx),
@@ -124,18 +125,22 @@ const renderCustomLabel = (props) => {
   const textAnchor = isRight ? 'start' : 'end';
 
   let nameLabel = payload.name;
-  if (nameLabel.length > 20) {
-    nameLabel = nameLabel.substring(0, 20) + '...';
+  const maxLen = payload.isSingleChart ? 25 : 18;
+  if (nameLabel.length > maxLen) {
+    nameLabel = nameLabel.substring(0, maxLen) + '...';
   }
+
+  const fontSizeTitle = payload.isSingleChart ? 11.5 : 9.5;
+  const fontSizeValue = payload.isSingleChart ? 10.5 : 8.5;
 
   return (
     <g>
       <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" opacity={0.8} strokeWidth={1.5} strokeLinejoin="round" />
-      <circle cx={ex} cy={ey} r={3.5} fill={fill} stroke="none" />
-      <text x={ex + (isRight ? 1 : -1) * 8} y={ey - 5} textAnchor={textAnchor} fill="#f8fafc" fontSize={11.5} fontWeight={800}>
+      <circle cx={ex} cy={ey} r={3} fill={fill} stroke="none" />
+      <text x={ex + (isRight ? 1 : -1) * 6} y={ey - 4} textAnchor={textAnchor} fill="#f8fafc" fontSize={fontSizeTitle} fontWeight={800}>
         {nameLabel}
       </text>
-      <text x={ex + (isRight ? 1 : -1) * 8} y={ey + 11} textAnchor={textAnchor} fill={fill} fontSize={10.5} fontWeight={700}>
+      <text x={ex + (isRight ? 1 : -1) * 6} y={ey + 10} textAnchor={textAnchor} fill={fill} fontSize={fontSizeValue} fontWeight={700}>
         {`${value} Unit (${(percent * 100).toFixed(1)}%)`}
       </text>
     </g>
@@ -254,8 +259,8 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
   };
 
   const isSingleChart = sourceFilter !== 'ALL';
-  const innerR = isSingleChart ? 130 : 70;
-  const outerR = isSingleChart ? 190 : 110;
+  const innerR = isSingleChart ? 130 : 55;
+  const outerR = isSingleChart ? 190 : 80;
   const containerHeight = isSingleChart ? 550 : 380;
 
   return (
@@ -300,7 +305,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
               {inPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={inPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={renderCustomLabel} labelLine={false}>
+                    <Pie data={inPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={(props) => renderCustomLabel({...props, isSingleChart})} labelLine={false} minAngle={18} isAnimationActive={false}>
                       {inPie.chartData.map(entry => <Cell key={entry.name} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
@@ -325,7 +330,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
               {validPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={validPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={renderCustomLabel} labelLine={false}>
+                    <Pie data={validPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={(props) => renderCustomLabel({...props, isSingleChart})} labelLine={false} minAngle={18} isAnimationActive={false}>
                       {validPie.chartData.map(entry => <Cell key={entry.name} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
@@ -350,7 +355,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
               {backlogPie.total > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={backlogPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={renderCustomLabel} labelLine={false}>
+                    <Pie data={backlogPie.chartData} cx="50%" cy="50%" innerRadius={innerR} outerRadius={outerR} paddingAngle={4} dataKey="value" stroke="none" label={(props) => renderCustomLabel({...props, isSingleChart})} labelLine={false} minAngle={18} isAnimationActive={false}>
                       {backlogPie.chartData.map(entry => <Cell key={entry.name} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />

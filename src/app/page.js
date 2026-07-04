@@ -53,61 +53,62 @@ export default function HomePage() {
     const pageHeight = 210;
     const padding = 10;
 
-    const addElementToPdf = async (elementId, startY = padding, newPage = false) => {
-      const el = document.getElementById(elementId);
-      if (!el) return startY;
-      if (newPage) pdf.addPage();
-      
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#0f172a' });
-      const imgData = canvas.toDataURL('image/png');
-      
-      // Calculate width and height to fit width
-      const imgWidth = pageWidth - (padding * 2);
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      // If height is too big, scale it down to fit page
-      let finalWidth = imgWidth;
-      let finalHeight = imgHeight;
-      if (imgHeight > (pageHeight - startY - padding)) {
-        finalHeight = pageHeight - startY - padding;
-        finalWidth = (canvas.width * finalHeight) / canvas.height;
+    const exportPage = async (elementIds, isFirstPage = false) => {
+      if (!isFirstPage) pdf.addPage();
+      pdf.setFillColor(15, 23, 42); 
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F'); 
+
+      let currentY = padding;
+      if (isFirstPage) {
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(16);
+        pdf.text(`Overview - Tab ${activeTab}`, padding, currentY + 5);
+        currentY += 15;
       }
-      
-      // Center horizontally if scaled down
-      const xPos = padding + (imgWidth - finalWidth) / 2;
-      
-      pdf.addImage(imgData, 'PNG', xPos, startY, finalWidth, finalHeight);
-      return startY + finalHeight + padding;
+
+      // Render all canvases for this page
+      const canvases = [];
+      let total_h_mm = 0;
+      const targetWidth = pageWidth - (padding * 2);
+
+      for (const id of elementIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#0f172a' });
+          const h_mm = (canvas.height * targetWidth) / canvas.width;
+          canvases.push({ canvas, h_mm });
+          total_h_mm += h_mm;
+        }
+      }
+
+      // Calculate uniform scale so they fit the available page height
+      const availableHeight = pageHeight - currentY - padding;
+      let scale = 1;
+      if (total_h_mm > availableHeight) {
+        scale = availableHeight / total_h_mm;
+      }
+
+      // Draw them
+      for (const item of canvases) {
+        const imgData = item.canvas.toDataURL('image/png');
+        const finalWidth = targetWidth * scale;
+        const finalHeight = item.h_mm * scale;
+        const xPos = padding + (targetWidth - finalWidth) / 2;
+
+        pdf.addImage(imgData, 'PNG', xPos, currentY, finalWidth, finalHeight);
+        currentY += finalHeight;
+      }
     };
 
     // Show loading state or similar if needed...
     const originalBodyBg = document.body.style.background;
     
     try {
-      // ── Halaman 1: KPI & Pie Chart ──
-      let currentY = padding;
+      // ── Halaman 1 ──
+      await exportPage(['pdf-kpi', 'pdf-trend', 'pdf-composed'], true);
       
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFillColor(15, 23, 42); 
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F'); 
-      pdf.setFontSize(16);
-      pdf.text(`Overview - Tab ${activeTab}`, padding, currentY + 5);
-      currentY += 15;
-
-      currentY = await addElementToPdf('pdf-kpi', currentY, false);
-      // Memasukkan Grafik Trend ke halaman pertama
-      currentY = await addElementToPdf('pdf-trend', currentY, false);
-      // Memasukkan Grafik Komparasi ke halaman pertama
-      currentY = await addElementToPdf('pdf-composed', currentY, false);
-      
-      // ── Halaman 2: Trend, Composed Chart, & Performance ──
-      pdf.addPage();
-      pdf.setFillColor(15, 23, 42);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
-      currentY = padding;
-      currentY = await addElementToPdf('pdf-brand', currentY, false);
-      currentY = await addElementToPdf('pdf-performance', currentY, false);
+      // ── Halaman 2 ──
+      await exportPage(['pdf-brand', 'pdf-performance'], false);
       
       // Tabel Rincian Data dihilangkan sesuai permintaan (2 lembar saja)
 
@@ -310,11 +311,9 @@ export default function HomePage() {
           <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
             {data.length > 0 ? `${data.length} record • ${data.filter(d => d.source_type === 'IN').length} IN · ${data.filter(d => d.source_type === 'VALID').length} VALID · ${data.filter(d => d.source_type === 'BACKLOG').length} BACKLOG` : 'Memuat data...'}
           </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', alignItems: 'flex-end' }}>
           
-          {/* Baris 1: Status Database & User */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {/* Status Database & User (Dipindah ke Kiri) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', background: dbConnected ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${dbConnected ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '999px' }}>
               <Database size={12} style={{ color: dbConnected ? '#34d399' : '#f87171' }} />
               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dbConnected ? '#34d399' : '#f87171' }}>
@@ -327,22 +326,24 @@ export default function HomePage() {
               <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{user.email}</span>
             </div>
           </div>
-
-          {/* Baris 2: Tombol Aksi */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', alignItems: 'flex-end', justifyContent: 'center' }}>
+          
+          {/* Tombol Aksi */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <button className="btn btn-secondary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
               onClick={fetchSalesData} title="Reload data dari Supabase">
-              <RefreshCw size={13} /> Refresh
+              <RefreshCw size={16} /> Refresh
             </button>
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+            <button className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
               onClick={() => setShowUploadModal(true)}>
-              <Upload size={13} /> Upload Data
+              <Upload size={16} /> Upload Data
             </button>
-            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+            <button className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.25)'}
               onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
               onClick={handleDeleteData}>
-              <X size={13} /> Hapus Data
+              <X size={16} /> Hapus Data
             </button>
           </div>
         </div>
