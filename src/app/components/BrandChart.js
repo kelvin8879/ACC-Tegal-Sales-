@@ -130,8 +130,8 @@ const renderCustomLabel = (props) => {
     nameLabel = nameLabel.substring(0, maxLen) + '...';
   }
 
-  const fontSizeTitle = payload.isSingleChart ? 11.5 : 9.5;
-  const fontSizeValue = payload.isSingleChart ? 10.5 : 8.5;
+  const fontSizeTitle = payload.isSingleChart ? 14 : 11.5;
+  const fontSizeValue = payload.isSingleChart ? 13 : 10.5;
 
   return (
     <g>
@@ -298,7 +298,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* IN PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'IN') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.IN, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(59, 130, 246, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+            <h4 style={{ color: SOURCE_COLORS.IN, margin: '0 0 1rem 0', fontWeight: 900, fontSize: '2.2rem', textShadow: '0 2px 10px rgba(59, 130, 246, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
               IN
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
@@ -341,7 +341,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* VALID PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'VALID') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.VALID, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(34, 197, 94, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+            <h4 style={{ color: SOURCE_COLORS.VALID, margin: '0 0 1rem 0', fontWeight: 900, fontSize: '2.2rem', textShadow: '0 2px 10px rgba(34, 197, 94, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
               VALID
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
@@ -384,7 +384,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
         {/* BACKLOG PIE */}
         {(sourceFilter === 'ALL' || sourceFilter === 'BACKLOG') && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-            <h4 style={{ color: SOURCE_COLORS.BACKLOG, margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.6rem', textShadow: '0 2px 10px rgba(239, 68, 68, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
+            <h4 style={{ color: SOURCE_COLORS.BACKLOG, margin: '0 0 1rem 0', fontWeight: 900, fontSize: '2.2rem', textShadow: '0 2px 10px rgba(239, 68, 68, 0.4)', textAlign: 'center', letterSpacing: '0.05em' }}>
               BACKLOG
             </h4>
             <div style={{ width: '100%', height: containerHeight, position: 'relative' }}>
