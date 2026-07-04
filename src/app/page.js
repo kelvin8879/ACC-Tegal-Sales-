@@ -4,8 +4,10 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Upload, RefreshCw, Search, ChevronLeft, ChevronRight, SlidersHorizontal, X, Download
+  Upload, RefreshCw, Search, ChevronLeft, ChevronRight, SlidersHorizontal, X, Download, LogOut, User, Database
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 import KpiCards from './components/KpiCards';
 import TrendChart from './components/TrendChart';
@@ -20,6 +22,30 @@ export default function HomePage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Overall'); // Overall, IN, VALID, BACKLOG
+  const [user, setUser] = useState(null);
+  const [dbConnected, setDbConnected] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check authentication
+    const authSession = localStorage.getItem('auth_session');
+    if (!authSession) {
+      router.push('/login');
+      return;
+    }
+    setUser(JSON.parse(authSession));
+      
+      // Ping Supabase to check connection
+      const checkConnection = async () => {
+        try {
+          const { error } = await supabase.from('coordinators').select('id').limit(1);
+          if (!error) setDbConnected(true);
+        } catch (e) {
+          setDbConnected(false);
+        }
+      };
+      checkConnection();
+  }, [router]);
 
   const exportToPDF = async () => {
     const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape A4 (297 x 210 mm)
@@ -112,16 +138,33 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
+  const handleDeleteData = async () => {
+    if (!confirm('AWAS! Apakah Anda yakin ingin menghapus SELURUH data penjualan dari Database?')) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('sales_data_v3').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw new Error(error.message);
+      alert('Semua data berhasil dihapus!');
+      setData([]);
+    } catch (err) {
+      alert('Gagal menghapus data: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── Load data on mount ──────────────────────────────────────────────────────
 
   const fetchSalesData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/load-local-excel');
-      const json = await res.json();
-      if (json.success) setData(json.data);
+      const { data: dbData, error } = await supabase.from('sales_data_v3').select('*');
+      
+      if (error) throw new Error(error.message);
+      
+      setData(dbData || []);
     } catch (err) {
-      console.error('Failed to load local Excel:', err.message);
+      console.error('Failed to load from Supabase:', err.message);
     } finally {
       setLoading(false);
     }
@@ -196,8 +239,8 @@ export default function HomePage() {
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: '0.5rem',
     color: '#e2e8f0',
-    padding: '0.5rem 0.7rem',
-    fontSize: '1.1rem',
+    padding: '0.4rem 0.6rem',
+    fontSize: '0.85rem',
     outline: 'none',
     cursor: 'pointer',
     minWidth: 0,
@@ -235,6 +278,10 @@ export default function HomePage() {
     return `${minD.toLocaleDateString('id-ID', opt)} s/d ${maxD.toLocaleDateString('id-ID', opt)}`;
   }, [data]);
 
+  if (!user) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Memeriksa Akses...</div>;
+  }
+
   return (
     <div className={`app-wrapper`}>
       {/* ── Header ────────────────────────────────────────────────────────── */}
@@ -264,15 +311,40 @@ export default function HomePage() {
             {data.length > 0 ? `${data.length} record • ${data.filter(d => d.source_type === 'IN').length} IN · ${data.filter(d => d.source_type === 'VALID').length} VALID · ${data.filter(d => d.source_type === 'BACKLOG').length} BACKLOG` : 'Memuat data...'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-          <button className="btn btn-secondary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            onClick={fetchSalesData} title="Reload data lokal">
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button className="btn btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            onClick={() => setShowUploadModal(true)}>
-            <Upload size={14} /> Upload Data
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', alignItems: 'flex-end' }}>
+          
+          {/* Baris 1: Status Database & User */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', background: dbConnected ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${dbConnected ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '999px' }}>
+              <Database size={12} style={{ color: dbConnected ? '#34d399' : '#f87171' }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: dbConnected ? '#34d399' : '#f87171' }}>
+                {dbConnected ? 'Terhubung (Supabase)' : 'Koneksi Terputus'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <User size={13} style={{ color: 'var(--text-secondary)' }} />
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{user.email}</span>
+            </div>
+          </div>
+
+          {/* Baris 2: Tombol Aksi */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+              onClick={fetchSalesData} title="Reload data dari Supabase">
+              <RefreshCw size={13} /> Refresh
+            </button>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+              onClick={() => setShowUploadModal(true)}>
+              <Upload size={13} /> Upload Data
+            </button>
+            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+              onClick={handleDeleteData}>
+              <X size={13} /> Hapus Data
+            </button>
+          </div>
         </div>
       </header>
 

@@ -61,6 +61,10 @@
   --bg-glow-color: rgba(244, 63, 94, 0.08);
 }
 
+html {
+  font-size: 85%; /* Mencegah ukuran jumbo pada monitor standar */
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 // ─── C1 Master Data ───────────────────────────────────────────────────────────
 const C1_DEALERS = [
@@ -133,9 +134,10 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
           wilayah: getWilayah(dealer), brand: getBrand(dealer),
           pengajuan: 'Non Top Up',
           status: String(row['StatusAppl'] || row['CDCurState'] || 'In Process').trim(),
+          status: String(row['StatusAppl'] || row['CDCurState'] || 'In Process').trim(),
           acp: null,
           // New Columns
-          id: String(row['ID'] || '').trim(),
+          excel_id: String(row['ID'] || '').trim(),
           salesman: String(row['Salesman'] || '').trim(),
           merk: String(row['Merk'] || '').trim(),
           nilai_princip: row['NilaiPrincip'] || 0,
@@ -161,7 +163,7 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
           wilayah: getWilayah(dealer), brand: getBrand(dealer),
           pengajuan, status: 'Backlog', acp: null,
           // New Columns
-          id: String(row['ID'] || '').trim(),
+          excel_id: String(row['ID'] || '').trim(),
           tenor: row['TENOR'] || 0,
           otr: row['OTR'] || 0,
           dp: row['DP'] || 0,
@@ -195,7 +197,7 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
           wilayah: getWilayah(dealer), brand: getBrand(dealer),
           pengajuan, status: acp, acp,
           // New Columns
-          id: String(row['ID'] || '').trim(),
+          excel_id: String(row['ID'] || '').trim(),
           kota_dealer: String(row['KotaDealer'] || '').trim(),
           merk: String(row['Merk'] || '').trim(),
         });
@@ -204,8 +206,38 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
       const allRecords = [...parsedIn, ...parsedValid, ...parsedBacklog];
       if (allRecords.length === 0) throw new Error('Tidak ada data C1 yang valid ditemukan di file ini.');
 
-      setStatusMsg({ type: 'success', text: `Sukses! ${allRecords.length} data C1 berhasil diproses.` });
-      setTimeout(() => { onUploadSuccess(allRecords); onClose(); }, 1500);
+      setStatusMsg({ type: 'loading', text: `Menyimpan ${allRecords.length} data ke Supabase...` });
+
+      // 1. Delete old data (Truncate basically)
+      const { error: delError } = await supabase.from('sales_data_v3').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delError) throw new Error('Gagal menghapus data lama di database: ' + delError.message);
+
+      // 2. Map data for insertion
+      const insertData = allRecords.map(r => ({
+        excel_id: r.excel_id,
+        source_type: r.source_type,
+        tanggal: r.tanggal,
+        dealer: r.dealer,
+        officer: r.officer,
+        pengajuan: r.pengajuan,
+        status: r.status,
+        nama: r.nama,
+        no_reg: r.no_reg,
+        wilayah: r.wilayah,
+        brand: r.brand,
+        acp: r.acp
+      }));
+
+      // 3. Bulk Insert (chunking per 1000 to be safe with Supabase limits)
+      const chunkSize = 1000;
+      for (let i = 0; i < insertData.length; i += chunkSize) {
+        const chunk = insertData.slice(i, i + chunkSize);
+        const { error: insError } = await supabase.from('sales_data_v3').insert(chunk);
+        if (insError) throw new Error('Gagal menyimpan data baru: ' + insError.message);
+      }
+
+      setStatusMsg({ type: 'success', text: `Sukses! ${allRecords.length} data berhasil disimpan ke Database.` });
+      setTimeout(() => { onUploadSuccess(); onClose(); }, 2000);
 
     } catch (err) {
       setStatusMsg({ type: 'error', text: 'Gagal memproses: ' + (err.message || 'Format data tidak sesuai.') });
