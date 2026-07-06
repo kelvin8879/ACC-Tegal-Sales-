@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { X, Send, FileText, CheckSquare, AlertCircle, Building2, User, BadgeCheck } from 'lucide-react';
+import { X, FileText, CheckSquare, AlertCircle, Building2, User, BadgeCheck } from 'lucide-react';
 
 const BRAND_COLORS = {
   Toyota: '#ef4444',
@@ -46,31 +46,6 @@ export default function DrillDownDrawer({ selectedItem, data, onClose }) {
 
     return { totalIn, totalValid, totalBacklog, acpCount, acpPct, brands };
   }, [entityData]);
-
-  // Generate WhatsApp Share Message
-  const handleWhatsAppShare = () => {
-    const dateStr = new Date().toLocaleDateString('id-ID', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-
-    const message = `Halo Bapak/Ibu, berikut adalah update performa Sales C1 untuk *${name}* (${type === 'dealer' ? 'Dealer' : 'Officer'}) per ${dateStr}:
-
-📥 *Aplikasi IN*: ${stats.totalIn}
-✅ *Aplikasi VALID*: ${stats.totalValid}
-⚠️ *Aplikasi BACKLOG*: ${stats.totalBacklog}
-💜 *ACP*: ${stats.acpCount} (${stats.acpPct}%)
-
-Mohon dukungannya untuk menindaklanjuti data *BACKLOG* agar dapat segera diproses menjadi *VALID*.
-
-Terima kasih,
-*Koordinator Sales ACC Tegal*`;
-
-    const encodedText = encodeURIComponent(message);
-    window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
-  };
 
   const pillStyle = (color) => ({
     display: 'inline-block',
@@ -212,13 +187,6 @@ Terima kasih,
           </div>
         </div>
 
-        {/* Action Button */}
-        <div style={{ marginTop: 'auto', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button className="btn-wa" onClick={handleWhatsAppShare} style={{ width: '100%', padding: '0.55rem', fontSize: '0.82rem' }}>
-            <Send size={14} />
-            Bagikan via WhatsApp
-          </button>
-        </div>
       </div>
     </div>
   );
