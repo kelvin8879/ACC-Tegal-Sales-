@@ -259,9 +259,9 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
   };
 
   const isSingleChart = sourceFilter !== 'ALL';
-  const innerR = isSingleChart ? 80 : 55;
-  const outerR = isSingleChart ? 120 : 80;
-  const containerHeight = isSingleChart ? 400 : 380;
+  const innerR = isSingleChart ? 65 : 55;
+  const outerR = isSingleChart ? 95 : 80;
+  const containerHeight = isSingleChart ? 320 : 380;
 
   return (
     <div className="glass-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', gap: '2rem' }}>
