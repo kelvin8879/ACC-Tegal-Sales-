@@ -110,7 +110,7 @@ export default function HomePage() {
       const page1Scale = await exportPage(['pdf-kpi', 'pdf-trend', 'pdf-composed'], true);
 
       // ── Halaman 2 ── (Gunakan scale yang sama dengan Halaman 1)
-      await exportPage(['pdf-brand', 'pdf-performance'], false, page1Scale);
+      await exportPage(['pdf-page2'], false, page1Scale);
 
       // Tabel Rincian Data dihilangkan sesuai permintaan (2 lembar saja)
 
@@ -497,17 +497,22 @@ export default function HomePage() {
         {/* ── Charts Row ────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div id="pdf-trend"><TrendChart data={baseFilteredData} activeTab={activeTab} /></div>
-          <div id="pdf-brand"><BrandChart data={baseFilteredData} sourceFilter={activeTab === 'Overall' ? 'ALL' : activeTab} /></div>
           <div id="pdf-composed"><DistributionComposedChart data={baseFilteredData} /></div>
         </div>
 
-        {/* ── Performance Tables ────────────────────────────────────────── */}
-        {/* PerformanceTables always shows overall funnel metrics (IN, VALID, BACKLOG, ACP) filtered by other fields */}
-        <div id="pdf-performance"><PerformanceTables
-          data={baseFilteredData}
-          onDrillDown={setSelectedDrillDown}
-          activeTabFilter={activeTab}
-        /></div>
+        {/* ── Halaman 2 PDF (Brand + Performance) ───────────────────────── */}
+        <div id="pdf-page2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+          <div style={{ height: '100%' }}>
+            <BrandChart data={baseFilteredData} sourceFilter={activeTab === 'Overall' ? 'ALL' : activeTab} />
+          </div>
+          <div style={{ height: '100%' }}>
+            <PerformanceTables
+              data={baseFilteredData}
+              onDrillDown={setSelectedDrillDown}
+              activeTabFilter={activeTab}
+            />
+          </div>
+        </div>
 
         {/* ── AI Insights ───────────────────────────────────────────────── */}
         <AiInsights data={baseFilteredData} activeTab={activeTab} />
