@@ -69,11 +69,14 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
   const [dragActive, setDragActive] = useState({ IN: false, VALID: false, BACKLOG: false });
 
   const handleFileChange = (type, file) => {
-    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-      setFiles(prev => ({ ...prev, [type]: file }));
-      setStatusMsg({ type: '', text: '' });
-    } else {
-      setStatusMsg({ type: 'error', text: 'Format file harus Excel (.xlsx atau .xls)' });
+    if (file) {
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+        setFiles(prev => ({ ...prev, [type]: file }));
+        setStatusMsg({ type: '', text: '' });
+      } else {
+        setStatusMsg({ type: 'error', text: 'Format file harus Excel (.xlsx atau .xls)' });
+      }
     }
   };
 
@@ -178,11 +181,11 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
         const no_reg = String(row['NoAggr'] || '').trim();
         const match = customerMap.get(key7(no_reg));
         
-        // Since Valid doesn't have DEALER name, we derive it from IN data mapping.
-        // If not found in IN data, we can try to guess from KotaDealer or just fallback.
-        let dealer = match ? match.dealer : matchDealer(String(row['KotaDealer'] || '').trim());
-        let officer = match ? match.officer : matchOfficer(String(row['NamaSO'] || '').trim());
-        let nama = match ? match.nama : `Customer ${key7(no_reg)}`;
+        let dealerRaw = String(row['NamaDealer'] || '').trim();
+        let officerRaw = String(row['NamaSO'] || '').trim();
+        let dealer = match ? match.dealer : matchDealer(dealerRaw);
+        let officer = match ? match.officer : matchOfficer(officerRaw);
+        let nama = match ? match.nama : String(row['Name'] || `Customer ${key7(no_reg)}`).trim();
         
         if (!dealer || !officer) continue;
 
