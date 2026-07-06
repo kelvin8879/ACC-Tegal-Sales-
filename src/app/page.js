@@ -335,7 +335,9 @@ export default function HomePage() {
               onClick={fetchSalesData} title="Reload data dari Supabase">
               <RefreshCw size={16} /> Refresh
             </button>
-            <button className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+            <button className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'scale(1)'; }}
               onClick={() => setShowUploadModal(true)}>
               <Upload size={16} /> Upload Data
             </button>
