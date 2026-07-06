@@ -259,9 +259,9 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
   };
 
   const isSingleChart = sourceFilter !== 'ALL';
-  const innerR = isSingleChart ? 130 : 55;
-  const outerR = isSingleChart ? 190 : 80;
-  const containerHeight = isSingleChart ? 550 : 380;
+  const innerR = isSingleChart ? 80 : 55;
+  const outerR = isSingleChart ? 120 : 80;
+  const containerHeight = isSingleChart ? 400 : 380;
 
   return (
     <div className="glass-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', gap: '2rem' }}>
@@ -315,9 +315,9 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
                   pointerEvents: 'none',
                   zIndex: 5
                 }}>
-                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
-                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{inPie.total}</span>
-                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                  <span style={{ fontSize: isSingleChart ? '0.85rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '2.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{inPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.8rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
                 </div>
               )}
               {inPie.total > 0 ? (
@@ -358,9 +358,9 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
                   pointerEvents: 'none',
                   zIndex: 5
                 }}>
-                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
-                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{validPie.total}</span>
-                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                  <span style={{ fontSize: isSingleChart ? '0.85rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '2.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{validPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.8rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
                 </div>
               )}
               {validPie.total > 0 ? (
@@ -401,9 +401,9 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
                   pointerEvents: 'none',
                   zIndex: 5
                 }}>
-                  <span style={{ fontSize: isSingleChart ? '1rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
-                  <span style={{ fontSize: isSingleChart ? '3.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{backlogPie.total}</span>
-                  <span style={{ fontSize: isSingleChart ? '0.9rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
+                  <span style={{ fontSize: isSingleChart ? '0.85rem' : '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>Total</span>
+                  <span style={{ fontSize: isSingleChart ? '2.5rem' : '1.8rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>{backlogPie.total}</span>
+                  <span style={{ fontSize: isSingleChart ? '0.8rem' : '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Unit</span>
                 </div>
               )}
               {backlogPie.total > 0 ? (
