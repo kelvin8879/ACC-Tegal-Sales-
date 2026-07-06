@@ -261,7 +261,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
   const isSingleChart = sourceFilter !== 'ALL';
   const innerR = isSingleChart ? 65 : 55;
   const outerR = isSingleChart ? 95 : 80;
-  const containerHeight = isSingleChart ? 320 : 380;
+  const containerHeight = isSingleChart ? 320 : 180;
 
   return (
     <div className="glass-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem', gap: '2rem' }}>
@@ -434,7 +434,7 @@ export default function BrandChart({ data, sourceFilter = 'ALL' }) {
               Komparasi Status Keseluruhan
             </h3>
 
-            <div style={{ width: '100%', height: 250 }}>
+            <div style={{ width: '100%', height: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData} layout="vertical" margin={{ top: 10, right: 50, left: 40, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={true} />
