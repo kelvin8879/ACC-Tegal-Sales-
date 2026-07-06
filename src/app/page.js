@@ -16,7 +16,6 @@ import DistributionComposedChart from './components/DistributionComposedChart';
 import PerformanceTables from './components/PerformanceTables';
 import DrillDownDrawer from './components/DrillDownDrawer';
 import AiInsights from './components/AiInsights';
-import UploadSection from './components/UploadSection';
 
 export default function HomePage() {
   const [data, setData] = useState([]);
@@ -28,7 +27,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // Check authentication
-    const authSession = localStorage.getItem('auth_session');
+    const authSession = sessionStorage.getItem('auth_session');
     if (!authSession) {
       router.push('/login');
       return;
@@ -121,7 +120,7 @@ export default function HomePage() {
 
 
   // Modals & Drawers
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  // Modals & Drawers
   const [selectedDrillDown, setSelectedDrillDown] = useState(null);
   const [isFilterExpanded, setIsFilterExpanded] = useState(true);
 
@@ -338,7 +337,7 @@ export default function HomePage() {
             <button className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}
               onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.transform = 'scale(1.02)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'scale(1)'; }}
-              onClick={() => setShowUploadModal(true)}>
+              onClick={() => router.push('/upload')}>
               <Upload size={16} /> Upload Data
             </button>
             <button className="btn" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
@@ -621,15 +620,6 @@ export default function HomePage() {
       </main>
 
       {/* ── Modals & Drawers ──────────────────────────────────────────────── */}
-      {showUploadModal && (
-        <UploadSection
-          onUploadSuccess={(newRecords) => {
-            if (newRecords?.length > 0) setData(newRecords);
-            else fetchSalesData();
-          }}
-          onClose={() => setShowUploadModal(false)}
-        />
-      )}
 
       {selectedDrillDown && (
         <DrillDownDrawer

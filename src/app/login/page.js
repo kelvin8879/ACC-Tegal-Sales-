@@ -80,8 +80,8 @@ export default function LoginPage() {
         if (roleData) userRole = roleData.role;
       }
 
-      // SIMPAN SESI SECARA PERMANEN
-      localStorage.setItem('auth_session', JSON.stringify({ email: userEmail, role: userRole }));
+      // SIMPAN SESI SECARA SEMENTARA (HILANG SAAT BROWSER DITUTUP)
+      sessionStorage.setItem('auth_session', JSON.stringify({ email: userEmail, role: userRole }));
       
       // Redirect to dashboard
       router.push('/');
