@@ -33,17 +33,17 @@ export default function HomePage() {
       return;
     }
     setUser(JSON.parse(authSession));
-      
-      // Ping Supabase to check connection
-      const checkConnection = async () => {
-        try {
-          const { error } = await supabase.from('coordinators').select('id').limit(1);
-          if (!error) setDbConnected(true);
-        } catch (e) {
-          setDbConnected(false);
-        }
-      };
-      checkConnection();
+
+    // Ping Supabase to check connection
+    const checkConnection = async () => {
+      try {
+        const { error } = await supabase.from('coordinators').select('id').limit(1);
+        if (!error) setDbConnected(true);
+      } catch (e) {
+        setDbConnected(false);
+      }
+    };
+    checkConnection();
   }, [router]);
 
   const exportToPDF = async () => {
@@ -52,10 +52,10 @@ export default function HomePage() {
     const pageHeight = 210;
     const padding = 10;
 
-    const exportPage = async (elementIds, isFirstPage = false) => {
+    const exportPage = async (elementIds, isFirstPage = false, forceScale = null) => {
       if (!isFirstPage) pdf.addPage();
-      pdf.setFillColor(15, 23, 42); 
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F'); 
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
       let currentY = padding;
       if (isFirstPage) {
@@ -82,8 +82,9 @@ export default function HomePage() {
 
       // Calculate uniform scale so they fit the available page height
       const availableHeight = pageHeight - currentY - padding;
-      let scale = 1;
-      if (total_h_mm > availableHeight) {
+      let scale = forceScale || 1;
+
+      if (!forceScale && total_h_mm > availableHeight) {
         scale = availableHeight / total_h_mm;
       }
 
@@ -97,18 +98,20 @@ export default function HomePage() {
         pdf.addImage(imgData, 'PNG', xPos, currentY, finalWidth, finalHeight);
         currentY += finalHeight;
       }
+      
+      return scale;
     };
 
     // Show loading state or similar if needed...
     const originalBodyBg = document.body.style.background;
-    
+
     try {
       // ── Halaman 1 ──
-      await exportPage(['pdf-kpi', 'pdf-trend', 'pdf-composed'], true);
-      
-      // ── Halaman 2 ──
-      await exportPage(['pdf-brand', 'pdf-performance'], false);
-      
+      const page1Scale = await exportPage(['pdf-kpi', 'pdf-trend', 'pdf-composed'], true);
+
+      // ── Halaman 2 ── (Gunakan scale yang sama dengan Halaman 1)
+      await exportPage(['pdf-brand', 'pdf-performance'], false, page1Scale);
+
       // Tabel Rincian Data dihilangkan sesuai permintaan (2 lembar saja)
 
       pdf.save(`Overview_${activeTab}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -159,9 +162,9 @@ export default function HomePage() {
     setLoading(true);
     try {
       const { data: dbData, error } = await supabase.from('sales_data_v3').select('*');
-      
+
       if (error) throw new Error(error.message);
-      
+
       setData(dbData || []);
     } catch (err) {
       console.error('Failed to load from Supabase:', err.message);
@@ -310,7 +313,7 @@ export default function HomePage() {
           <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
             {data.length > 0 ? `${data.length} record • ${data.filter(d => d.source_type === 'IN').length} IN · ${data.filter(d => d.source_type === 'VALID').length} VALID · ${data.filter(d => d.source_type === 'BACKLOG').length} BACKLOG` : 'Memuat data...'}
           </p>
-          
+
           {/* Status Database & User (Dipindah ke Kiri) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.8rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', background: dbConnected ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${dbConnected ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: '999px' }}>
@@ -327,7 +330,7 @@ export default function HomePage() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', alignItems: 'flex-end', justifyContent: 'center' }}>
-          
+
           {/* Tombol Aksi */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <button className="btn btn-secondary" style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
@@ -396,7 +399,7 @@ export default function HomePage() {
             );
           })}
         </div>
-        
+
         <button
           onClick={exportToPDF}
           style={{
