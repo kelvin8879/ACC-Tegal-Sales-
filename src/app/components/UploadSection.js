@@ -6,42 +6,17 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2 } from 'l
 import { supabase } from '@/lib/supabase';
 
 // ─── C1 Master Data ───────────────────────────────────────────────────────────
-const C1_DEALERS = [
-  'CHANDRA PRATAMA M-PKL KLBANGER',
-  'NASMOCO PRATAMA MTR-TGL MRTLYO',
-  'NASMOCO-SMG KALIGAWE',
-  'AI DSO-TGL SUGIONO',
-  'AI DSO-PKL SUTOMO',
-  'AI ISO-TGL PEKALONGAN',
-  'KARYA ZIRANG U-TGL ISZ NEW',
-  'CARBAY SERVICES IND,PT-JKT PAL',
-  'AUTOMOBIL JAYA MANDIRI-TGL BRT',
-  'DOVA PUTRA M S,PT-TGL MTLYO',
-  'GEDONG JEMBAR-TGL AR HAKIM',
-];
-
-const C1_OFFICERS = [
-  'MUHAMMAD AFIF MUZAQI',
-  'R MUHAMMAD CAKRA DHIKA',
-  'MUHAMAD ALWAN CHAFIZH HAIDAR',
-  'MUHAMAD AJI MUSTOGA',
-  'REIVALDINO ENDAH MULIO',
-];
-
 const norm = (v) => String(v || '').trim().toUpperCase();
-const matchDealer = (val) => C1_DEALERS.find(d => norm(d) === norm(val)) || null;
-const matchOfficer = (val) => C1_OFFICERS.find(o => norm(o) === norm(val)) || null;
-
-const getBrand = (dealer) => {
-  const d = norm(dealer);
-  if (d.includes('CHANDRA') || d.includes('NASMOCO')) return 'Toyota';
-  if (d.includes('AI DSO')) return 'Daihatsu';
-  if (d.includes('AI ISO') || d.includes('KARYA ZIRANG')) return 'Isuzu';
-  if (d.includes('CARBAY')) return 'Used Car';
-  if (d.includes('AUTOMOBIL JAYA')) return 'Honda';
-  if (d.includes('DOVA') || d.includes('GEDONG JEMBAR')) return 'Suzuki';
-  return 'Lainnya';
+const matchDealer = (val) => {
+  const s = String(val || '').trim();
+  return s.length > 0 ? s : null;
 };
+const matchOfficer = (val) => {
+  const s = String(val || '').trim();
+  return s.length > 0 ? s : null;
+};
+
+
 
 const getWilayah = (dealer) => {
   const d = norm(dealer);
@@ -132,14 +107,17 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
         const nama = String(row['Nama'] || 'No Name').trim();
         if (no_reg) customerMap.set(key7(no_reg), { nama, dealer, officer });
 
+        const modelStr = String(row['Model'] || '').trim().toUpperCase();
+        const segment = modelStr.includes('T:') ? 'Used Car' : 'New Car';
+
         parsedIn.push({
           source_type: 'IN', tanggal: toDate(row['TglApplIn'], null),
           no_reg: no_reg || null, nama, dealer, officer,
-          wilayah: getWilayah(dealer), brand: getBrand(dealer),
-          pengajuan: 'Non Top Up',
-          status: String(row['StatusAppl'] || row['CDCurState'] || 'In Process').trim(),
-          status: String(row['StatusAppl'] || row['CDCurState'] || 'In Process').trim(),
+          wilayah: getWilayah(dealer), brand: String(row['Merk'] || '').trim() || 'Lainnya',
+          pengajuan: null,
+          status: `${String(row['CDCurState'] || '').trim()} ${String(row['StatusAppl'] || '').trim()}`.trim() || 'In Process',
           acp: null,
+          segment,
           // New Columns
           excel_id: String(row['ID'] || '').trim(),
           salesman: String(row['Salesman'] || '').trim(),
@@ -159,15 +137,17 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
         const no_reg = String(row['NOREG'] || '').trim();
         const nama = String(row['NAMA'] || 'No Name').trim();
         const pengajuan = String(row['ADDM/B'] || '').trim() === 'M' ? 'ADDM' : 'ADDB';
+        const nuFlag = String(row['N/U'] || '').trim().toUpperCase();
+        const segment = nuFlag === 'N' ? 'New Car' : nuFlag === 'U' ? 'Used Car' : null;
         if (no_reg) customerMap.set(key7(no_reg), { nama, dealer, officer });
 
         parsedBacklog.push({
           source_type: 'BACKLOG', tanggal: toDate(row['TGL IN'], null),
           no_reg: no_reg || null, nama, dealer, officer,
-          wilayah: getWilayah(dealer), brand: getBrand(dealer),
-          pengajuan, status: 'Backlog', acp: null,
+          wilayah: getWilayah(dealer), brand: String(row['MERK'] || '').trim() || 'Lainnya',
+          pengajuan, status: 'Backlog', acp: null, segment,
           // New Columns
-          excel_id: String(row['ID'] || '').trim(),
+          excel_id: String(row['PH'] || '').replace(/[^0-9.]/g, '') || '0',
           tenor: row['TENOR'] || 0,
           otr: row['OTR'] || 0,
           dp: row['DP'] || 0,
@@ -192,14 +172,15 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
 
         const flag = String(row['FlagNewUsed'] || '').trim().toUpperCase();
         const pengajuan = flag === 'N' ? 'New Car' : flag === 'U' ? 'Used Car' : 'Non Top Up';
+        const segment = flag === 'N' ? 'New Car' : flag === 'U' ? 'Used Car' : null;
         const acpRaw = String(row['ACP/NON'] || '').trim();
         const acp = acpRaw.toUpperCase().includes('ACP') && !acpRaw.toUpperCase().includes('NON') ? 'ACP' : 'NonACP';
 
         parsedValid.push({
           source_type: 'VALID', tanggal: toDate(row['TglGoLive'], null),
           no_reg: no_reg || null, nama, dealer, officer,
-          wilayah: getWilayah(dealer), brand: getBrand(dealer),
-          pengajuan, status: acp, acp,
+          wilayah: getWilayah(dealer), brand: String(row['Merk'] || '').trim() || 'Lainnya',
+          pengajuan, status: acp, acp, segment,
           // New Columns
           excel_id: String(row['ID'] || '').trim(),
           kota_dealer: String(row['KotaDealer'] || '').trim(),
@@ -229,7 +210,8 @@ export default function UploadSection({ onUploadSuccess, onClose }) {
         no_reg: r.no_reg,
         wilayah: r.wilayah,
         brand: r.brand,
-        acp: r.acp
+        acp: r.acp,
+        segment: r.segment
       }));
 
       // 3. Bulk Insert (chunking per 1000 to be safe with Supabase limits)

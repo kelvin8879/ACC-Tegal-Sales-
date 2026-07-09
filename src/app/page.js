@@ -2,7 +2,7 @@
 
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Upload, RefreshCw, Search, ChevronLeft, ChevronRight, SlidersHorizontal, X, Download, LogOut, User, Database
 } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function HomePage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Overall'); // Overall, IN, VALID, BACKLOG
+  const [tableTab, setTableTab] = useState('Overall');
   const [user, setUser] = useState(null);
   const [dbConnected, setDbConnected] = useState(false);
   const router = useRouter();
@@ -128,15 +129,23 @@ export default function HomePage() {
   const [filterWilayah, setFilterWilayah] = useState(''); // Tegal / Pekalongan
   const [filterBrand, setFilterBrand] = useState('');     // Toyota / Daihatsu / Isuzu / etc.
   const [filterDealer, setFilterDealer] = useState('');
-  const [filterOfficer, setFilterOfficer] = useState('');
-  const [filterPengajuan, setFilterPengajuan] = useState('');
+  const [filterOfficer, setFilterOfficer] = useState([]);
+  const [isOfficerDropdownOpen, setIsOfficerDropdownOpen] = useState(false);
   const [filterAcp, setFilterAcp] = useState('');         // ACP / NonACP
+  const [filterKondisi, setFilterKondisi] = useState(''); // New Car / Used Car
   const [searchNama, setSearchNama] = useState('');
   const [searchNoReg, setSearchNoReg] = useState('');
 
-  // Table pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  // Table specific states
+  const [inCurrentPage, setInCurrentPage] = useState(1);
+  const [backlogCurrentPage, setBacklogCurrentPage] = useState(1);
+  const [filterInStatus, setFilterInStatus] = useState([]);
+  const [isFilterInStatusOpen, setIsFilterInStatusOpen] = useState(false);
+  const [filterBacklogBrand, setFilterBacklogBrand] = useState([]);
+  const [isFilterBacklogBrandOpen, setIsFilterBacklogBrandOpen] = useState(false);
+  const [filterBacklogOfficer, setFilterBacklogOfficer] = useState([]);
+  const [isFilterBacklogOfficerOpen, setIsFilterBacklogOfficerOpen] = useState(false);
+  const pageSize = 15;
 
   const handleDeleteData = async () => {
     if (!confirm('AWAS! Apakah Anda yakin ingin menghapus SELURUH data penjualan dari Database?')) return;
@@ -177,24 +186,24 @@ export default function HomePage() {
   const opts = useMemo(() => {
     const dealers = new Set();
     const officers = new Set();
-    const pengajuans = new Set();
     const brands = new Set();
     const wilayahs = new Set();
+    const inStatuses = new Set();
 
     data.forEach(r => {
       if (r.dealer) dealers.add(r.dealer);
       if (r.officer) officers.add(r.officer);
-      if (r.pengajuan) pengajuans.add(r.pengajuan);
       if (r.brand) brands.add(r.brand);
       if (r.wilayah) wilayahs.add(r.wilayah);
+      if (r.source_type === 'IN' && r.status) inStatuses.add(r.status);
     });
 
     return {
       dealers: [...dealers].sort(),
       officers: [...officers].sort(),
-      pengajuans: [...pengajuans].sort(),
       brands: [...brands].sort(),
       wilayahs: [...wilayahs].sort(),
+      inStatuses: [...inStatuses].sort(),
     };
   }, [data]);
 
@@ -204,36 +213,138 @@ export default function HomePage() {
       if (filterWilayah && r.wilayah !== filterWilayah) return false;
       if (filterBrand && r.brand !== filterBrand) return false;
       if (filterDealer && r.dealer !== filterDealer) return false;
-      if (filterOfficer && r.officer !== filterOfficer) return false;
-      if (filterPengajuan && r.pengajuan !== filterPengajuan) return false;
+      if (filterOfficer.length > 0 && !filterOfficer.includes(r.officer)) return false;
       if (filterAcp && r.acp !== filterAcp) return false;
+      if (filterKondisi && r.segment !== filterKondisi) return false;
       if (searchNama && !String(r.nama || '').toLowerCase().includes(searchNama.toLowerCase())) return false;
       if (searchNoReg && !String(r.no_reg || '').toLowerCase().includes(searchNoReg.toLowerCase())) return false;
       return true;
     });
-  }, [data, filterWilayah, filterBrand, filterDealer, filterOfficer, filterPengajuan, filterAcp, searchNama, searchNoReg]);
+  }, [data, filterWilayah, filterBrand, filterDealer, filterOfficer, filterAcp, filterKondisi, searchNama, searchNoReg]);
 
-  // ── Data Filtered by Active Tab (Overall, IN, VALID, BACKLOG) ──────────────
-  const tabFilteredData = useMemo(() => {
-    if (activeTab === 'Overall') return baseFilteredData;
-    return baseFilteredData.filter(r => r.source_type === activeTab);
-  }, [baseFilteredData, activeTab]);
+    const localOpts = useMemo(() => {
+    const brands = new Set();
+    const officers = new Set();
+    const inStatuses = new Set();
+    baseFilteredData.forEach(r => {
+      if (r.brand && r.source_type === 'BACKLOG') brands.add(r.brand);
+      if (r.officer && r.source_type === 'BACKLOG') officers.add(r.officer);
+      if (r.status && r.source_type === 'IN') inStatuses.add(r.status);
+    });
+    return {
+      brands: [...brands].sort(),
+      officers: [...officers].sort(),
+      inStatuses: [...inStatuses].sort(),
+    };
+  }, [baseFilteredData]);
 
-  // Pagination for Detail Table
-  const totalPages = Math.max(1, Math.ceil(tabFilteredData.length / pageSize));
-  const pagedData = tabFilteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // ── Separate Table Data ──────────────
+  const inTableData = useMemo(() => {
+    return baseFilteredData.filter(r => {
+      if (r.source_type !== 'IN') return false;
+      if (filterInStatus.length > 0 && !filterInStatus.includes(r.status)) return false;
+      return true;
+    });
+  }, [baseFilteredData, filterInStatus]);
+
+  const backlogTableData = useMemo(() => {
+    return baseFilteredData.filter(r => {
+      if (r.source_type !== 'BACKLOG') return false;
+      if (filterBacklogBrand.length > 0 && !filterBacklogBrand.includes(r.brand)) return false;
+      if (filterBacklogOfficer.length > 0 && !filterBacklogOfficer.includes(r.officer)) return false;
+      return true;
+    });
+  }, [baseFilteredData, filterBacklogBrand, filterBacklogOfficer]);
+
+  // Pagination
+  const inTotalPages = Math.max(1, Math.ceil(inTableData.length / pageSize));
+  const inPagedData = inTableData.slice((inCurrentPage - 1) * pageSize, inCurrentPage * pageSize);
+
+  
+  const backlogTotalPH = useMemo(() => {
+    return backlogTableData.reduce((sum, item) => sum + (Number(item.excel_id) || 0), 0);
+  }, [backlogTableData]);
+
+  const backlogTotalPages = Math.max(1, Math.ceil(backlogTableData.length / pageSize));
+  const backlogPagedData = backlogTableData.slice((backlogCurrentPage - 1) * pageSize, backlogCurrentPage * pageSize);
 
   const resetFilters = () => {
     setFilterWilayah(''); setFilterBrand('');
-    setFilterDealer(''); setFilterOfficer(''); setFilterPengajuan('');
-    setFilterAcp(''); setSearchNama(''); setSearchNoReg('');
-    setCurrentPage(1);
+    setFilterDealer(''); setFilterOfficer([]);
+    setFilterAcp(''); setFilterKondisi(''); setSearchNama(''); setSearchNoReg('');
+    setFilterInStatus([]); setFilterBacklogBrand([]); setFilterBacklogOfficer([]);
+    setInCurrentPage(1);
+    setBacklogCurrentPage(1);
   };
 
   const hasActiveFilters = filterWilayah || filterBrand || filterDealer
-    || filterOfficer || filterPengajuan || filterAcp || searchNama || searchNoReg;
+    || filterOfficer.length > 0 || filterAcp || filterKondisi || searchNama || searchNoReg;
 
   // Dropdown style
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}/${d.getFullYear()}`;
+  };
+
+  const MultiSelectDropdown = ({ title, options, selected, onChange, isOpen, setIsOpen }) => {
+    const wrapperRef = useRef(null);
+    useEffect(() => {
+      function handleClickOutside(event) {
+        if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+          setIsOpen(false);
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }, [wrapperRef, setIsOpen]);
+
+    return (
+      <div ref={wrapperRef} style={{ position: 'relative', minWidth: '150px' }}>
+        <div 
+          style={{...selectStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none'}}
+          onClick={() => setIsOpen(prev => !prev)}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selected.length === 0 ? title : `${selected.length} Dipilih`}
+          </span>
+          <span>▼</span>
+        </div>
+        {isOpen && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.25rem', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.5rem', maxHeight: '200px', overflowY: 'auto', zIndex: 50, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#e2e8f0', cursor: 'pointer', padding: '0.25rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.02)' }}>
+              <input 
+                type="checkbox" 
+                checked={selected.length === 0} 
+                onChange={() => { onChange([]); setIsOpen(false); }}
+              />
+              Semua
+            </label>
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.25rem 0' }} />
+            {options.map(o => (
+              <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#e2e8f0', cursor: 'pointer', padding: '0.25rem', borderRadius: '0.25rem', background: 'rgba(255,255,255,0.02)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={selected.includes(o)} 
+                  onChange={(e) => {
+                    if (e.target.checked) onChange([...selected, o]);
+                    else onChange(selected.filter(v => v !== o));
+                  }}
+                />
+                {String(o).split(' ').slice(0, 3).join(' ')}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const selectStyle = {
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.1)',
@@ -468,18 +579,23 @@ export default function HomePage() {
                 {opts.dealers.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
 
-              {/* Officer */}
-              <select style={selectStyle} value={filterOfficer} onChange={e => { setFilterOfficer(e.target.value); setCurrentPage(1); }}>
-                <option value="">Semua Officer</option>
-                {opts.officers.map(o => <option key={o} value={o}>{o.split(' ').slice(0, 3).join(' ')}</option>)}
+              {/* Officer Multi-Select */}
+              <div style={{ flex: '1 1 130px' }}>
+                <MultiSelectDropdown 
+                  title="Semua Officer"
+                  options={opts.officers}
+                  selected={filterOfficer}
+                  onChange={val => { setFilterOfficer(val); setCurrentPage(1); setInCurrentPage(1); setBacklogCurrentPage(1); }}
+                  isOpen={isOfficerDropdownOpen}
+                  setIsOpen={setIsOfficerDropdownOpen}
+                />
+              </div>
+              {/* Kondisi Kendaraan (New/Used) */}
+              <select style={selectStyle} value={filterKondisi} onChange={e => { setFilterKondisi(e.target.value); setCurrentPage(1); }}>
+                <option value="">Semua Kondisi</option>
+                <option value="New Car">New Car</option>
+                <option value="Used Car">Used Car</option>
               </select>
-
-              {/* Pengajuan */}
-              <select style={selectStyle} value={filterPengajuan} onChange={e => { setFilterPengajuan(e.target.value); setCurrentPage(1); }}>
-                <option value="">Semua Pengajuan</option>
-                {opts.pengajuans.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-
               {/* ACP */}
               <select style={selectStyle} value={filterAcp} onChange={e => { setFilterAcp(e.target.value); setCurrentPage(1); }}>
                 <option value="">Semua ACP</option>
@@ -509,115 +625,153 @@ export default function HomePage() {
         {/* ── AI Insights ───────────────────────────────────────────────── */}
         <AiInsights data={baseFilteredData} activeTab={activeTab} />
 
-        {/* ── Detail Table ──────────────────────────────────────────────── */}
-        <div id="pdf-detail-table" className="glass-card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', margin: 0 }}>
-              Rincian Data — Tab {activeTab} ({tabFilteredData.length} record)
-            </h3>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}>
-                  <ChevronLeft size={14} />
-                </button>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', padding: '0 0.5rem', whiteSpace: 'nowrap' }}>
-                  {currentPage} / {totalPages}
-                </span>
-                <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>
-                  <ChevronRight size={14} />
-                </button>
+        {/* ── Detail Tables ─────────────────────────────────────────────── */}
+        <div id="pdf-detail-table" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* TABLE IN */}
+          <div className="glass-card" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', margin: 0 }}>
+                  Rincian Data KHUSUS IN ({inTableData.length} record)
+                </h3>
+                <MultiSelectDropdown 
+                  title="Semua Status"
+                  options={localOpts.inStatuses}
+                  selected={filterInStatus}
+                  onChange={val => { setFilterInStatus(val); setInCurrentPage(1); }}
+                  isOpen={isFilterInStatusOpen}
+                  setIsOpen={setIsFilterInStatusOpen}
+                />
               </div>
-            )}
-          </div>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                  {activeTab === 'Overall' && ['Tanggal', 'Tipe', 'Nama', 'No. Reg', 'Dealer', 'Officer', 'Merek', 'Kota', 'Pengajuan', 'ACP'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
-                  {activeTab === 'IN' && ['ID', 'No. Reg', 'Tgl', 'Nama', 'Dealer', 'Salesman', 'Officer', 'Merek', 'Nilai Princip', 'Status', 'Unit'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
-                  {activeTab === 'VALID' && ['ID', 'No. Aggr', 'Kota Dealer', 'Merek', 'Pengajuan', 'Officer', 'Tgl GoLive', 'ACP'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
-                  {activeTab === 'BACKLOG' && ['ID', 'No. Reg', 'Nama', 'Dealer', 'Pengajuan', 'Tenor', 'OTR', 'DP', 'PH', 'Merek', 'Tgl In', 'Officer'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={15} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Memuat data lokal...</td></tr>
-                ) : pagedData.length === 0 ? (
-                  <tr><td colSpan={15} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Tidak ada data sesuai filter</td></tr>
-                ) : pagedData.map((item, i) => (
-                  <tr key={item.id || i}
-                    onClick={() => setSelectedDrillDown({ type: 'officer', name: item.officer })}
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {activeTab === 'Overall' && (
-                      <>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}><span style={{ display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700, background: `${sourceBadge[item.source_type]}22`, color: sourceBadge[item.source_type] || '#fff' }}>{item.source_type}</span></td>
-                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: 500, color: '#fff', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nama}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.7rem' }}>{item.no_reg || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.dealer}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(item.officer || '').split(' ').slice(0, 3).join(' ')}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>{item.brand || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.wilayah || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{item.pengajuan || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{item.acp ? <span style={{ display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700, background: item.acp === 'ACP' ? 'rgba(167,139,250,0.2)' : 'rgba(100,116,139,0.2)', color: item.acp === 'ACP' ? '#a78bfa' : '#94a3b8' }}>{item.acp}</span> : '-'}</td>
-                      </>
-                    )}
-                    {activeTab === 'IN' && (
-                      <>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.id || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.salesman || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.officer}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.merk || item.brand || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.nilai_princip ? item.nilai_princip.toLocaleString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.status || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.unit || '-'}</td>
-                      </>
-                    )}
-                    {activeTab === 'VALID' && (
-                      <>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.id || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.kota_dealer || item.wilayah || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.merk || item.brand || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.pengajuan || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.officer}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.acp || '-'}</td>
-                      </>
-                    )}
-                    {activeTab === 'BACKLOG' && (
-                      <>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.id || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.pengajuan || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.tenor || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.otr ? item.otr.toLocaleString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dp ? item.dp.toLocaleString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.ph ? item.ph.toLocaleString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.merk || item.brand || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.officer}</td>
-                      </>
-                    )}
+              {inTotalPages > 1 && (
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setInCurrentPage(p => Math.max(p - 1, 1))} disabled={inCurrentPage === 1}>
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', padding: '0 0.5rem', whiteSpace: 'nowrap' }}>
+                    {inCurrentPage} / {inTotalPages}
+                  </span>
+                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setInCurrentPage(p => Math.min(p + 1, inTotalPages))} disabled={inCurrentPage === inTotalPages}>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    {['No. Reg', 'Tgl', 'Nama', 'Dealer', 'Officer', 'Merek', 'Status'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Memuat data lokal...</td></tr>
+                  ) : inPagedData.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Tidak ada data IN sesuai filter</td></tr>
+                  ) : inPagedData.map((item, i) => (
+                    <tr key={item.id || i}
+                      onClick={() => setSelectedDrillDown({ type: 'officer', name: item.officer })}
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{formatDate(item.tanggal)}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.officer}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.merk || item.brand || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.status || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-
+          {/* TABLE BACKLOG */}
+          <div className="glass-card" style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', flex: 1 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', margin: 0 }}>
+                  Rincian Data KHUSUS BACKLOG
+                </h3>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <MultiSelectDropdown 
+                    title="Semua Merek"
+                    options={localOpts.brands}
+                    selected={filterBacklogBrand}
+                    onChange={val => { setFilterBacklogBrand(val); setBacklogCurrentPage(1); }}
+                    isOpen={isFilterBacklogBrandOpen}
+                    setIsOpen={setIsFilterBacklogBrandOpen}
+                  />
+                  <MultiSelectDropdown 
+                    title="Semua Officer"
+                    options={localOpts.officers}
+                    selected={filterBacklogOfficer}
+                    onChange={val => { setFilterBacklogOfficer(val); setBacklogCurrentPage(1); }}
+                    isOpen={isFilterBacklogOfficerOpen}
+                    setIsOpen={setIsFilterBacklogOfficerOpen}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '1.1rem', color: '#facc15', fontWeight: 800, background: 'rgba(250, 204, 21, 0.1)', padding: '0.4rem 1rem', borderRadius: '0.5rem', border: '1px solid rgba(250, 204, 21, 0.2)', marginLeft: 'auto' }}>
+                  <span>Unit: {backlogTableData.length}</span>
+                  <span>PH: {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(backlogTotalPH)}</span>
+                </div>
+              </div>
+              {backlogTotalPages > 1 && (
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setBacklogCurrentPage(p => Math.max(p - 1, 1))} disabled={backlogCurrentPage === 1}>
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', padding: '0 0.5rem', whiteSpace: 'nowrap' }}>
+                    {backlogCurrentPage} / {backlogTotalPages}
+                  </span>
+                  <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setBacklogCurrentPage(p => Math.min(p + 1, backlogTotalPages))} disabled={backlogCurrentPage === backlogTotalPages}>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    {['No. Reg', 'Nama', 'Dealer', 'Pengajuan', 'Merek', 'PH', 'Officer'].map(col => <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'left', whiteSpace: 'nowrap' }}>{col}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Memuat data lokal...</td></tr>
+                  ) : backlogPagedData.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Tidak ada data BACKLOG sesuai filter</td></tr>
+                  ) : backlogPagedData.map((item, i) => (
+                    <tr key={item.id || i}
+                      onClick={() => setSelectedDrillDown({ type: 'officer', name: item.officer })}
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.pengajuan || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.merk || item.brand || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: '#a78bfa', fontWeight: 600 }}>
+                        {item.excel_id ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(item.excel_id) || 0) : '-'}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.officer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
         </div>
-      </main>
+</main>
 
       {/* ── Modals & Drawers ──────────────────────────────────────────────── */}
 
