@@ -169,7 +169,7 @@ export default function DrillDownDrawer({ selectedItem, data, onClose }) {
                   <tr key={i}>
                     <td style={{ padding: '0.4rem 0.5rem', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#ffffff' }}>{item.nama?.split(' ')[0] || '-'}</div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString().slice(-7) || '-'}</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString() || '-'}</div>
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       <div style={{ color: '#fff', fontWeight: 500 }}>{item.brand}</div>

@@ -677,7 +677,7 @@ export default function HomePage() {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString().slice(-7) || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString() || '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{formatDate(item.tanggal)}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama?.split(' ')[0] || '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
@@ -754,7 +754,7 @@ export default function HomePage() {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString().slice(-7) || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.no_reg?.toString() || '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: '#fff' }}>{item.nama?.split(' ')[0] || '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.dealer}</td>
                       <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-secondary)' }}>{item.pengajuan || '-'}</td>
